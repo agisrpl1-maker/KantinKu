@@ -45,7 +45,9 @@ export default function RiwayatPage() {
         </p>
       ) : (
         <div className="mt-6 space-y-4">
-          {pesanan.map((item) => (
+          {[...pesanan]
+            .sort((a, b) => Date.parse(b.dibuatPada) - Date.parse(a.dibuatPada))
+            .map((item) => (
             <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap justify-between gap-2">
                 <div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { menu, rupiah } from "../../../data/menu";
 import FormDetailMenu from "../../components/FormDetailMenu";
+import TombolFavorit from "../../components/TombolFavorit";
 
 export function generateStaticParams() {
   return menu.map((item) => ({ id: String(item.id) }));
@@ -39,6 +40,7 @@ export default async function DetailMenuPage({
         </span>
       </div>
       <p className="mt-5 text-2xl font-bold text-slate-900">{rupiah(item.harga)}</p>
+      <TombolFavorit id={item.id} />
       <FormDetailMenu item={item} />
     </article>
   );
