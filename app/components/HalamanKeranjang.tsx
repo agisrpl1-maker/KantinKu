@@ -8,15 +8,20 @@ import {
   hitungSubtotal,
   type ItemKeranjang,
   simpanKeranjang,
-  simpanPesanan,
 } from "../../data/keranjang";
 import { menu, rupiah } from "../../data/menu";
+import { bacaSemuaStok, EVENT_STOK_MENU_BERUBAH, type DaftarStok } from "../../data/stok";
+import { simpanCheckout } from "../../data/checkout";
 
 const MINIMUM_PROMO = 20_000;
 const BIAYA_ONGKIR = 2_000;
 
 export default function HalamanKeranjang() {
   const [keranjang, setKeranjang] = useState<ItemKeranjang[]>([]);
+  const [stokMenu, setStokMenu] = useState<DaftarStok>(
+    Object.fromEntries(menu.map((item) => [item.id, item.stock])),
+  );
+  const [stokError, setStokError] = useState(false);
   const [siap, setSiap] = useState(false);
   const [namaPemesan, setNamaPemesan] = useState("");
   const [metode, setMetode] = useState<"Ambil sendiri" | "Diantar">("Ambil sendiri");
@@ -52,13 +57,30 @@ export default function HalamanKeranjang() {
   }, [aturPromoAktif]);
 
   useEffect(() => {
+    function muatStok() {
+      try {
+        setStokMenu(bacaSemuaStok());
+        setStokError(false);
+      } catch (error) {
+        console.error("Gagal membaca stok menu.", error);
+        setStokError(true);
+        setPesan("Stok menu tidak dapat dibaca. Coba muat ulang halaman.");
+      }
+    }
+
     const timer = window.setTimeout(muatKeranjang, 0);
+    const timerStok = window.setTimeout(muatStok, 0);
     window.addEventListener(EVENT_KERANJANG_BERUBAH, muatKeranjang);
     window.addEventListener("storage", muatKeranjang);
+    window.addEventListener(EVENT_STOK_MENU_BERUBAH, muatStok);
+    window.addEventListener("storage", muatStok);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(timerStok);
       window.removeEventListener(EVENT_KERANJANG_BERUBAH, muatKeranjang);
       window.removeEventListener("storage", muatKeranjang);
+      window.removeEventListener(EVENT_STOK_MENU_BERUBAH, muatStok);
+      window.removeEventListener("storage", muatStok);
     };
   }, [muatKeranjang]);
 
@@ -99,8 +121,8 @@ export default function HalamanKeranjang() {
       simpanPerubahan(keranjang.filter((item) => item.id !== id));
       return;
     }
-    if (jumlah > itemMenu.stock) {
-      setPesan(`Jumlah ${itemMenu.nama} tidak boleh melebihi stok (${itemMenu.stock}).`);
+    if (jumlah > stokMenu[id]) {
+      setPesan(`Jumlah ${itemMenu.nama} tidak boleh melebihi stok (${stokMenu[id]}).`);
       return;
     }
     simpanPerubahan(keranjang.map((item) => (item.id === id ? { ...item, jumlah } : item)));
@@ -142,10 +164,14 @@ export default function HalamanKeranjang() {
       return itemMenu ? { baris, itemMenu } : undefined;
     });
     const itemTidakValid = itemPesanan.find(
-      (item) => !item || item.baris.jumlah > item.itemMenu.stock,
+      (item) => !item || item.baris.jumlah > stokMenu[item.baris.id],
     );
     if (itemTidakValid) {
       setPesan("Ada menu yang jumlahnya melebihi stok. Periksa kembali keranjang.");
+      return;
+    }
+    if (stokError) {
+      setPesan("Stok menu tidak dapat dibaca. Coba muat ulang halaman.");
       return;
     }
     if (itemPesanan.length === 0) {
@@ -182,8 +208,7 @@ export default function HalamanKeranjang() {
     };
 
     try {
-      simpanPesanan(pesanan);
-      simpanKeranjang([]);
+      simpanCheckout(pesanan, keranjang);
       setKeranjang([]);
       setPesan("");
       aturPromoAktif(false);
@@ -197,10 +222,8 @@ export default function HalamanKeranjang() {
         } Subtotal ${rupiah(subtotal)}, diskon ${rupiah(jumlahDiskon)}, ongkir ${rupiah(jumlahOngkir)}, total bayar ${rupiah(totalBayar)}. Keranjang dikosongkan dan pesanan disimpan ke riwayat.`,
       );
     } catch (error) {
-      console.error("Gagal menyimpan pesanan atau mengosongkan keranjang.", error);
-      setPesan(
-        "Pesanan gagal diselesaikan karena penyimpanan browser bermasalah. Periksa riwayat sebelum mencoba lagi agar pesanan tidak tercatat ganda.",
-      );
+      console.error("Gagal menyelesaikan checkout.", error);
+      setPesan(error instanceof Error ? error.message : "Checkout gagal disimpan. Coba lagi.");
     }
   }
 
@@ -284,7 +307,7 @@ export default function HalamanKeranjang() {
               )}
             </section>
 
-            <button type="submit" className="w-full rounded bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">
+            <button type="submit" disabled={stokError} className="w-full rounded bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
               Pesan sekarang
             </button>
           </div>
@@ -306,7 +329,7 @@ export default function HalamanKeranjang() {
                         <div className="mt-2 flex items-center gap-2 text-sm">
                           <button type="button" aria-label={`Kurangi ${item.nama}`} onClick={() => ubahJumlah(baris.id, baris.jumlah - 1)}>−</button>
                           <span>{baris.jumlah}</span>
-                          <button type="button" aria-label={`Tambah ${item.nama}`} disabled={baris.jumlah >= item.stock} onClick={() => ubahJumlah(baris.id, baris.jumlah + 1)}>+</button>
+                          <button type="button" aria-label={`Tambah ${item.nama}`} disabled={baris.jumlah >= (stokMenu[item.id] ?? 0)} onClick={() => ubahJumlah(baris.id, baris.jumlah + 1)}>+</button>
                           <button type="button" onClick={() => ubahJumlah(baris.id, 0)} className="ml-2 text-red-600">Hapus</button>
                         </div>
                       ) : (

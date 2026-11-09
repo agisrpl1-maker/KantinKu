@@ -5,6 +5,7 @@ import { menu } from "../../data/menu";
 import KartuMenu from "./KartuMenu";
 
 const kategoriMenu = ["Semua", "Makanan", "Minuman", "Camilan"];
+const JUMLAH_PER_TAMPILAN = 3;
 
 type UrutanMenu = "nama-asc" | "harga-asc" | "harga-desc";
 
@@ -12,6 +13,7 @@ export default function KatalogMenu() {
   const [pencarian, setPencarian] = useState("");
   const [kategori, setKategori] = useState("Semua");
   const [urutan, setUrutan] = useState<UrutanMenu>("nama-asc");
+  const [jumlahTampil, setJumlahTampil] = useState(JUMLAH_PER_TAMPILAN);
 
   const hasilMenu = useMemo(() => {
     const kataKunci = pencarian.trim().toLocaleLowerCase("id-ID");
@@ -91,11 +93,27 @@ export default function KatalogMenu() {
       </div>
 
       {hasilMenu.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {hasilMenu.map((item) => (
-            <KartuMenu key={item.id} item={item} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {hasilMenu.map((item, index) => (
+              <div
+                key={item.id}
+                className={index >= jumlahTampil ? "hidden sm:block" : ""}
+              >
+                <KartuMenu item={item} />
+              </div>
+            ))}
+          </div>
+          {jumlahTampil < hasilMenu.length && (
+            <button
+              type="button"
+              onClick={() => setJumlahTampil((jumlah) => jumlah + JUMLAH_PER_TAMPILAN)}
+              className="mt-6 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:hidden"
+            >
+              Muat lebih banyak
+            </button>
+          )}
+        </>
       ) : (
         <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-600">
           Menu tidak ditemukan.

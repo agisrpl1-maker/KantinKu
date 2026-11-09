@@ -20,26 +20,17 @@ export default async function DetailMenuPage({
   }
 
   return (
-    <article className="mx-auto max-w-2xl p-6">
+    <article className="mx-auto max-w-2xl rounded-xl border bg-white p-6">
       <Link href="/menu" className="text-sm font-medium text-blue-600 hover:text-blue-700">
         ← Kembali ke menu
       </Link>
-      <div className="mt-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">{item.nama}</h1>
-          <p className="mt-2 text-slate-600">{item.kategori}</p>
-        </div>
-        <span
-          className={
-            item.stock > 0
-              ? "rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700"
-              : "rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700"
-          }
-        >
-          {item.stock > 0 ? `${item.stock} stok` : "Habis"}
+      <div className="mt-5">
+        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+          {item.kategori}
         </span>
+        <h1 className="mt-2 text-3xl font-bold text-slate-900">{item.nama}</h1>
+        <p className="mt-1 text-slate-500">{rupiah(item.harga)}</p>
       </div>
-      <p className="mt-5 text-2xl font-bold text-slate-900">{rupiah(item.harga)}</p>
       <TombolFavorit id={item.id} />
       <FormDetailMenu item={item} />
     </article>

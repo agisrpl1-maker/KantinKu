@@ -8,11 +8,14 @@ import {
   simpanKeranjang,
 } from "../../data/keranjang";
 import type { Menu } from "../../data/menu";
+import { bacaStok } from "../../data/stok";
+import useStokMenu from "./useStokMenu";
 
 export default function FormDetailMenu({ item }: { item: Menu }) {
   const [keranjang, setKeranjang] = useState<ItemKeranjang[]>([]);
   const [jumlah, setJumlah] = useState(1);
   const [pesan, setPesan] = useState("");
+  const { stok, error: stokError } = useStokMenu(item.id, item.stock);
 
   const muatKeranjang = useCallback(() => {
     try {
@@ -35,14 +38,27 @@ export default function FormDetailMenu({ item }: { item: Menu }) {
   }, [muatKeranjang]);
 
   const jumlahDiKeranjang = keranjang.find((baris) => baris.id === item.id)?.jumlah ?? 0;
-  const sisaStok = item.stock - jumlahDiKeranjang;
-  const stokTidakCukup = item.stock <= 0 || sisaStok <= 0;
+  const sisaStok = Math.max(0, stok - jumlahDiKeranjang);
+  const stokTidakCukup = stok <= 0 || sisaStok <= 0;
 
   function tambahKeKeranjang(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const jumlahAkhir = keranjang.find((baris) => baris.id === item.id)?.jumlah ?? 0;
-    if (jumlah < 1 || jumlahAkhir + jumlah > item.stock) {
-      setPesan(`Jumlah melebihi stok tersedia. Sisa stok: ${Math.max(0, item.stock - jumlahAkhir)}.`);
+    if (jumlah < 1) {
+      setPesan("Jumlah minimal 1 untuk ditambahkan ke keranjang.");
+      return;
+    }
+
+    let stokTerbaru: number;
+    try {
+      stokTerbaru = bacaStok(item.id);
+    } catch (error) {
+      console.error("Gagal membaca stok menu.", error);
+      setPesan("Stok tidak dapat dibaca. Coba muat ulang halaman.");
+      return;
+    }
+    if (jumlahAkhir + jumlah > stokTerbaru) {
+      setPesan(`Jumlah melebihi stok tersedia. Sisa stok: ${Math.max(0, stokTerbaru - jumlahAkhir)}.`);
       return;
     }
 
@@ -56,6 +72,7 @@ export default function FormDetailMenu({ item }: { item: Menu }) {
     try {
       simpanKeranjang(keranjangBaru);
       setKeranjang(keranjangBaru);
+      setJumlah(1);
       setPesan(`${item.nama} ditambahkan ke keranjang.`);
     } catch (error) {
       console.error("Gagal menyimpan keranjang.", error);
@@ -63,12 +80,18 @@ export default function FormDetailMenu({ item }: { item: Menu }) {
     }
   }
 
-  if (item.stock === 0) {
+  if (stokError) {
+    return <p className="mt-6 font-medium text-red-600">Stok tidak dapat dimuat. Coba muat ulang halaman.</p>;
+  }
+
+  if (stok === 0) {
     return <p className="mt-6 font-medium text-red-600">Menu ini habis.</p>;
   }
 
   return (
-    <form onSubmit={tambahKeKeranjang} className="mt-6">
+    <form onSubmit={tambahKeKeranjang} className="mt-6 space-y-3 border-t pt-4">
+      <h2 className="text-lg font-semibold">Pesan menu</h2>
+      <p className="text-sm text-slate-600">Sisa {stok} stok</p>
       {jumlahDiKeranjang > 0 && (
         <p className="mb-3 text-sm text-slate-600">
           Sudah ada {jumlahDiKeranjang} di keranjang. Tersedia untuk ditambahkan: {Math.max(0, sisaStok)}.
@@ -83,12 +106,12 @@ export default function FormDetailMenu({ item }: { item: Menu }) {
             <input
               id="jumlah-menu"
               type="number"
-              min={1}
+              min={0}
               max={sisaStok}
               value={jumlah}
               onChange={(event) => {
                 const nilai = Number(event.target.value);
-                setJumlah(Number.isInteger(nilai) && nilai > 0 ? Math.min(nilai, sisaStok) : 1);
+                setJumlah(Number.isInteger(nilai) && nilai >= 0 ? Math.min(nilai, sisaStok) : 0);
                 setPesan("");
               }}
               className="w-24 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"

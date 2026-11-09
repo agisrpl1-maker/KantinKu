@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { Menu } from "../../data/menu";
 import { bacaFavorit } from "../../data/favorit";
-import { rupiah } from "../../data/menu";
+import KartuMenu from "./KartuMenu";
 
 export default function DaftarFavorit() {
   const [semuaMenu, setSemuaMenu] = useState<Menu[]>([]);
@@ -49,18 +48,10 @@ export default function DaftarFavorit() {
   if (daftar.length === 0) return <p className="text-slate-500">Belum ada menu favorit.</p>;
 
   return (
-    <ul className="space-y-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {daftar.map((item) => (
-        <li key={item.id}>
-          <Link
-            href={`/menu/${item.id}`}
-            className="flex items-center justify-between gap-4 text-blue-600 hover:underline"
-          >
-            <span>{item.nama}</span>
-            <span>{rupiah(item.harga)}</span>
-          </Link>
-        </li>
+        <KartuMenu key={item.id} item={item} />
       ))}
-    </ul>
+    </div>
   );
 }

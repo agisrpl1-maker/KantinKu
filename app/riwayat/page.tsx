@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { bacaRiwayat, type Pesanan } from "../../data/keranjang";
+import { bacaRiwayat, KUNCI_RIWAYAT, type Pesanan } from "../../data/keranjang";
 import { rupiah } from "../../data/menu";
 
 export default function RiwayatPage() {
@@ -20,6 +20,20 @@ export default function RiwayatPage() {
       setSiap(true);
     }
   }, []);
+
+  function hapusPesanan(id: string) {
+    if (!window.confirm("Hapus pesanan ini dari riwayat?")) return;
+
+    try {
+      const berikutnya = bacaRiwayat().filter((item) => item.id !== id);
+      window.localStorage.setItem(KUNCI_RIWAYAT, JSON.stringify(berikutnya));
+      setPesanan(berikutnya);
+      setError("");
+    } catch (caught) {
+      console.error("Gagal menghapus pesanan dari riwayat.", caught);
+      setError("Pesanan gagal dihapus. Coba lagi.");
+    }
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(muatRiwayat, 0);
@@ -48,31 +62,52 @@ export default function RiwayatPage() {
           {[...pesanan]
             .sort((a, b) => Date.parse(b.dibuatPada) - Date.parse(a.dibuatPada))
             .map((item) => (
-            <article key={item.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap justify-between gap-2">
-                <div>
-                  <h2 className="font-semibold text-slate-900">{item.namaPemesan}</h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {new Date(item.dibuatPada).toLocaleString("id-ID")}
-                  </p>
+              <article key={item.id} className="rounded-xl border border-black bg-white p-5 shadow-sm">
+                <header className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-slate-900">{item.namaPemesan}</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {new Date(item.dibuatPada).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-slate-900">{rupiah(item.total)}</p>
+                    <button
+                      type="button"
+                      onClick={() => hapusPesanan(item.id)}
+                      className="rounded px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </header>
+                <ul className="mt-4 divide-y divide-black border-y border-black text-sm">
+                  {item.items.map((baris) => (
+                    <li key={baris.id} className="flex justify-between gap-4 py-2.5">
+                      <span className="text-slate-700">
+                        {baris.nama} <span className="text-slate-500">× {baris.jumlah}</span>
+                      </span>
+                      <span className="shrink-0 text-slate-700">{rupiah(baris.harga * baris.jumlah)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm text-slate-600">
+                  <span>
+                    {item.metode === "Diantar" ? `Diantar ke kelas ${item.kelas}` : "Ambil sendiri"}
+                  </span>
+                  <span>Subtotal {rupiah(item.subtotal)}</span>
                 </div>
-                <p className="font-bold text-slate-900">{rupiah(item.total)}</p>
-              </div>
-              <ul className="mt-4 space-y-1 text-sm text-slate-600">
-                {item.items.map((baris) => (
-                  <li key={baris.id}>
-                    {baris.nama} × {baris.jumlah} — {rupiah(baris.harga * baris.jumlah)}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-sm text-slate-600">
-                {item.metode === "Diantar" ? `Diantar ke kelas ${item.kelas}` : "Ambil sendiri"}
-                {" · "}Subtotal {rupiah(item.subtotal)}
-                {item.diskon > 0 ? ` · Diskon ${rupiah(item.diskon)}` : ""}
-                {item.ongkir > 0 ? ` · Ongkir ${rupiah(item.ongkir)}` : ""}
-              </p>
-            </article>
-          ))}
+                {(item.diskon > 0 || item.ongkir > 0) && (
+                  <div className="mt-2 space-y-1 text-right text-sm text-slate-500">
+                    {item.diskon > 0 && <p>Diskon −{rupiah(item.diskon)}</p>}
+                    {item.ongkir > 0 && <p>Ongkir {rupiah(item.ongkir)}</p>}
+                  </div>
+                )}
+              </article>
+            ))}
         </div>
       )}
     </section>

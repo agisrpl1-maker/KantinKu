@@ -42,7 +42,7 @@ export default function Navbar() {
   }, [hitungKeranjang]);
 
   return (
-    <nav className="flex items-center gap-6 border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
+    <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:gap-6 sm:px-6">
       <span className="text-lg font-bold text-blue-600">KantinKu</span>
 
       {menu.map((item) => (
