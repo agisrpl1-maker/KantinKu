@@ -23,6 +23,7 @@ export default function HalamanKeranjang() {
   );
   const [stokError, setStokError] = useState(false);
   const [siap, setSiap] = useState(false);
+  const [tahapCheckout, setTahapCheckout] = useState(false);
   const [namaPemesan, setNamaPemesan] = useState("");
   const [metode, setMetode] = useState<"Ambil sendiri" | "Diantar">("Ambil sendiri");
   const [kelas, setKelas] = useState("");
@@ -210,6 +211,7 @@ export default function HalamanKeranjang() {
     try {
       simpanCheckout(pesanan, keranjang);
       setKeranjang([]);
+      setTahapCheckout(false);
       setPesan("");
       aturPromoAktif(false);
       setKodePromo("");
@@ -235,7 +237,9 @@ export default function HalamanKeranjang() {
 
   return (
     <section>
-      <h1 className="mb-5 text-3xl font-bold text-slate-900">Checkout</h1>
+      <h1 className="mb-5 text-3xl font-bold text-slate-900">
+        {tahapCheckout ? "Checkout" : "Keranjang"}
+      </h1>
 
       {pesanSukses && (
         <p aria-live="polite" className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-green-800">
@@ -248,9 +252,65 @@ export default function HalamanKeranjang() {
         <p className="rounded border bg-white p-6 text-center">
           Keranjang masih kosong. <Link href="/menu" className="text-blue-600 underline">Lihat menu</Link>
         </p>
+      ) : !tahapCheckout ? (
+        <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
+          <section className="rounded border bg-white p-4">
+            <h2 className="mb-3 border-b pb-3 font-semibold">
+              Barang dipilih ({keranjang.reduce((jumlah, item) => jumlah + item.jumlah, 0)})
+            </h2>
+            <div className="divide-y">
+              {keranjang.map((baris) => {
+                const item = menu.find((pilihan) => pilihan.id === baris.id);
+                return (
+                  <div key={baris.id} className="flex justify-between gap-3 py-3">
+                    <div>
+                      <p className="font-medium">{item?.nama ?? "Menu tidak tersedia"}</p>
+                      {item ? (
+                        <div className="mt-2 flex items-center gap-2 text-sm">
+                          <button type="button" aria-label={`Kurangi ${item.nama}`} onClick={() => ubahJumlah(baris.id, baris.jumlah - 1)}>−</button>
+                          <span>{baris.jumlah}</span>
+                          <button type="button" aria-label={`Tambah ${item.nama}`} disabled={baris.jumlah >= (stokMenu[item.id] ?? 0)} onClick={() => ubahJumlah(baris.id, baris.jumlah + 1)}>+</button>
+                          <button type="button" onClick={() => ubahJumlah(baris.id, 0)} className="ml-2 text-red-600">Hapus</button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => ubahJumlah(baris.id, 0)} className="mt-2 text-sm text-red-600">Hapus</button>
+                      )}
+                    </div>
+                    <span className="font-medium">{item ? rupiah(item.harga * baris.jumlah) : "—"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <aside className="h-fit space-y-4 rounded border bg-white p-4">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>{rupiah(subtotal)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-3 font-bold">
+              <span>Total sementara</span>
+              <span>{rupiah(subtotal)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTahapCheckout(true)}
+              className="w-full rounded bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700"
+            >
+              Lanjut ke checkout
+            </button>
+          </aside>
+        </div>
       ) : (
         <form onSubmit={pesanSekarang} className="grid gap-5 lg:grid-cols-[3fr_2fr]">
           <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setTahapCheckout(false)}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              ← Kembali ke keranjang
+            </button>
             <section className="space-y-3 rounded border bg-white p-4">
               <label htmlFor="nama-pemesan" className="block font-medium">Nama pemesan</label>
               <input
@@ -326,14 +386,11 @@ export default function HalamanKeranjang() {
                     <div>
                       <p className="font-medium">{item?.nama ?? "Menu tidak tersedia"}</p>
                       {item ? (
-                        <div className="mt-2 flex items-center gap-2 text-sm">
-                          <button type="button" aria-label={`Kurangi ${item.nama}`} onClick={() => ubahJumlah(baris.id, baris.jumlah - 1)}>−</button>
-                          <span>{baris.jumlah}</span>
-                          <button type="button" aria-label={`Tambah ${item.nama}`} disabled={baris.jumlah >= (stokMenu[item.id] ?? 0)} onClick={() => ubahJumlah(baris.id, baris.jumlah + 1)}>+</button>
-                          <button type="button" onClick={() => ubahJumlah(baris.id, 0)} className="ml-2 text-red-600">Hapus</button>
+                        <div className="mt-1 text-sm text-slate-500">
+                          Jumlah {baris.jumlah}
                         </div>
                       ) : (
-                        <button type="button" onClick={() => ubahJumlah(baris.id, 0)} className="mt-2 text-sm text-red-600">Hapus</button>
+                        <p className="mt-1 text-sm text-red-600">Menu tidak tersedia</p>
                       )}
                     </div>
                     <span className="font-medium">{item ? rupiah(item.harga * baris.jumlah) : "—"}</span>
